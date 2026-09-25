@@ -1,3 +1,6 @@
+import bottomSvg from './assets/bottom.svg';
+import usbSvg from './assets/usb.svg';
+
 type Overlay = 'slideRing' | 'buttonRing' | 'led';
 
 interface DfuStep {
@@ -85,13 +88,13 @@ function stepHtml(step: DfuStep): string {
               <svg class="absolute z-0" style="width: 25%; top: var(--dfu-slide-top); left: 50%; transform: translateX(-50%)" viewBox="0 0 113 53" xmlns="http://www.w3.org/2000/svg">
                 <use href="#slide-${step.slideVariant}" />
               </svg>
-              <img src="/src/assets/bottom.svg" class="absolute inset-0 z-10 w-40 h-40" alt="${step.bottomAlt}" />
+              <img src="${bottomSvg}" class="absolute inset-0 z-10 w-40 h-40" alt="${step.bottomAlt}" />
             </div>
             <span aria-label="Step ${step.num} of 4" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 rounded-full bg-neutral-800/65 px-2 py-0.5 text-[10px] font-medium text-white whitespace-nowrap dark:bg-black/50">
               ${step.label}
             </span>
           </div>
-          <img src="/src/assets/usb.svg" class="${step.usbClass}" alt="USB-C cable" />
+          <img src="${usbSvg}" class="${step.usbClass}" alt="USB-C cable" />
         </div>`;
 }
 
@@ -99,7 +102,7 @@ export function renderDfuSteps(container: HTMLElement): void {
   container.innerHTML = `<div class="relative flex justify-center overflow-hidden">
         <div class="invisible pointer-events-none flex flex-col items-center" aria-hidden="true">
           <div class="h-40"></div>
-          <img src="/src/assets/usb.svg" class="h-auto w-7 -mt-3.5" alt="" />
+          <img src="${usbSvg}" class="h-auto w-7 -mt-3.5" alt="" />
         </div>
         ${STEPS.map(stepHtml).join('\n        ')}
       </div>
