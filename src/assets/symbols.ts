@@ -1,0 +1,41 @@
+// SVG symbol definitions for #slide-on and #slide-off, referenced via
+// <use href="#slide-on"> in the DFU guide illustration. Injected at startup
+// because SVG <use href="#id"> requires the symbol to be in the same document.
+const SYMBOLS_SVG = `<svg class="hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="slide-on" viewBox="0 0 113 53">
+      <g stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+        <g stroke-width=".5">
+          <rect x=".7" y=".8" width="112" height="52" rx="26" ry="26" fill="#262626" />
+          <rect x="4" y="5" width="104" height="44" rx="22" ry="22" fill="#500" />
+          <path d="m26 5h30l-0.1 44h-30c-12 0-22-10-22-22s10-22 22-22z" fill="#250" />
+        </g>
+        <g class="animate-slide-knob">
+          <rect x="34" y="12" width="45" height="30" rx="15" ry="15" fill="#262626" stroke-width=".5" />
+          <rect x="51" y="12" width="2" height="30" fill="#1f1f1f" stroke-width=".3" />
+          <rect x="60" y="12" width="2" height="30" fill="#292929" stroke-width=".3" />
+        </g>
+      </g>
+    </symbol>
+    <symbol id="slide-off" viewBox="0 0 113 53">
+      <g stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+        <g stroke-width=".5">
+          <rect x=".7" y=".8" width="112" height="52" rx="26" ry="26" fill="#262626" />
+          <rect x="4" y="5" width="104" height="44" rx="22" ry="22" fill="#500" />
+          <path d="m26 5h30l-0.1 44h-30c-12 0-22-10-22-22s10-22 22-22z" fill="#250" />
+        </g>
+        <g style="transform: translateX(-5px)">
+          <rect x="34" y="12" width="45" height="30" rx="15" ry="15" fill="#262626" stroke-width=".5" />
+          <rect x="51" y="12" width="2" height="30" fill="#1f1f1f" stroke-width=".3" />
+          <rect x="60" y="12" width="2" height="30" fill="#292929" stroke-width=".3" />
+        </g>
+      </g>
+    </symbol>
+  </defs>
+</svg>`;
+
+export function injectSvgSymbols(): void {
+  const div = document.createElement('div');
+  div.innerHTML = SYMBOLS_SVG;
+  document.body.prepend(div.firstElementChild!);
+}

@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DFU Test – Hardware Test (Phase 5)</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f5f5f5;
+        color: #1a1a1a;
+        padding: 24px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 4px;
+      }
+      .subtitle {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 20px;
+      }
+      #controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      button {
+        padding: 8px 18px;
+        font-size: 0.9rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      button:not(:disabled):hover {
+        background: #eaeaea;
+      }
+      #connectBtn {
+        background: #0066cc;
+        color: #fff;
+        border-color: #0066cc;
+      }
+      #connectBtn:not(:disabled):hover {
+        background: #0055aa;
+      }
+      #dfuBtn {
+        background: #2e7d32;
+        color: #fff;
+        border-color: #2e7d32;
+      }
+      #dfuBtn:not(:disabled):hover {
+        background: #256a29;
+      }
+      #disconnectBtn {
+        background: #c62828;
+        color: #fff;
+        border-color: #c62828;
+      }
+      #disconnectBtn:not(:disabled):hover {
+        background: #b71c1c;
+      }
+      input[type='file'] {
+        font-size: 0.85rem;
+      }
+      #status {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        background: #e0e0e0;
+      }
+      #status.connected {
+        background: #c8e6c9;
+      }
+      #status.error {
+        background: #ffcdd2;
+      }
+      #status.pending {
+        background: #fff9c4;
+      }
+      #status.done {
+        background: #bbdefb;
+      }
+      #progressContainer {
+        margin-bottom: 16px;
+        display: none;
+      }
+      #progressBar {
+        width: 100%;
+        height: 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      #progressFill {
+        height: 100%;
+        width: 0%;
+        background: #2e7d32;
+        transition: width 0.3s;
+      }
+      #progressLabel {
+        font-size: 0.82rem;
+        margin-top: 4px;
+        color: #555;
+      }
+      #results {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+      #results h2 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+      }
+      #imageInfo {
+        font-size: 0.82rem;
+      }
+      #imageInfo dt {
+        font-weight: 600;
+        margin-top: 6px;
+        color: #333;
+      }
+      #imageInfo dd {
+        margin-left: 12px;
+        color: #555;
+      }
+      #log {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+      }
+      #log h2 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+      }
+      #logEntries {
+        font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+        font-size: 0.78rem;
+        line-height: 1.6;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .entry {
+        padding: 2px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .entry .time {
+        color: #999;
+        margin-right: 8px;
+      }
+      .entry.pass {
+        color: #2e7d32;
+      }
+      .entry.fail {
+        color: #c62828;
+      }
+      .entry.info {
+        color: #1565c0;
+      }
+      .entry.data {
+        color: #555;
+      }
+      .entry.warn {
+        color: #e65100;
+      }
+      .hex-dump {
+        word-break: break-all;
+        background: #f8f8f8;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 2px;
+        font-size: 0.72rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>DFU Test – Hardware Integration Test</h1>
+    <p class="subtitle">
+      Tests Phase&nbsp;5 (<code>DfuSession</code>) end-to-end: erase → upload →
+      test against a real mcumgr device via <code>SerialSmpTransport</code>.
+    </p>
+
+    <div id="controls">
+      <button id="connectBtn">Connect</button>
+      <input type="file" id="fileInput" accept=".bin" disabled />
+      <button id="dfuBtn" disabled>Start DFU</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div id="status">Disconnected — select a .bin file and click Start DFU</div>
+
+    <div
+      id="deviceInfo"
+      style="
+        display: none;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+      "
+    >
+      <h2 style="font-size: 0.95rem; margin-bottom: 8px">Device Info</h2>
+      <dl id="deviceInfoContent" style="font-size: 0.82rem"></dl>
+    </div>
+
+    <div id="progressContainer">
+      <div id="progressBar"><div id="progressFill"></div></div>
+      <div id="progressLabel">Waiting…</div>
+    </div>
+
+    <div id="results">
+      <h2>Image Info</h2>
+      <dl id="imageInfo"><em>No image loaded.</em></dl>
+    </div>
+
+    <div id="log">
+      <h2>Log</h2>
+      <div id="logEntries"></div>
+    </div>
+
+    <script type="module">
+      import { SerialSmpTransport } from '../../src/transport.ts';
+      import { DfuSession } from '../../src/dfu-session.ts';
+      import {
+        buildImageSlotInfoRequest,
+        parseImageSlotInfoResponse,
+        buildImageStateRequest,
+        parseImageStateResponse,
+        parseImageInfo,
+        SmpError,
+      } from '../../src/image-commands.ts';
+      import { decodeSmpHeader } from '../../src/smp-header.ts';
+
+      // -----------------------------------------------------------------------
+      // DOM refs
+      // -----------------------------------------------------------------------
+      const connectBtn = document.getElementById('connectBtn');
+      const fileInput = document.getElementById('fileInput');
+      const dfuBtn = document.getElementById('dfuBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      const statusEl = document.getElementById('status');
+      const deviceInfoContainer = document.getElementById('deviceInfo');
+      const deviceInfoContent = document.getElementById('deviceInfoContent');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressFill = document.getElementById('progressFill');
+      const progressLabel = document.getElementById('progressLabel');
+      const imageInfoEl = document.getElementById('imageInfo');
+      const logEl = document.getElementById('logEntries');
+
+      // -----------------------------------------------------------------------
+      // State
+      // -----------------------------------------------------------------------
+      let transport = null;
+      let selectedImage = null; // { name, buffer }
+      let isConnected = false;
+      let isRunning = false;
+
+      // -----------------------------------------------------------------------
+      // Logging
+      // -----------------------------------------------------------------------
+      function log(type, msg, detail) {
+        const entry = document.createElement('div');
+        entry.className = `entry ${type}`;
+        const time = new Date().toLocaleTimeString();
+        entry.innerHTML = `<span class="time">[${time}]</span>${msg}`;
+        if (detail !== undefined) {
+          const hex = document.createElement('div');
+          hex.className = 'hex-dump';
+          hex.textContent = detail;
+          entry.appendChild(hex);
+        }
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = cls || '';
+      }
+
+      function hex(bytes) {
+        return Array.from(new Uint8Array(bytes))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(' ');
+      }
+
+      function updateUI() {
+        connectBtn.disabled = isConnected || isRunning;
+        fileInput.disabled = !isConnected || isRunning;
+        dfuBtn.disabled = !isConnected || !selectedImage || isRunning;
+        disconnectBtn.disabled = !isConnected || isRunning;
+      }
+
+      function handleDisconnect(err) {
+        if (!isConnected) return;
+        isConnected = false;
+        isRunning = false;
+
+        log('warn', `Device disconnected: ${err.message}`);
+        setStatus('Device disconnected', 'error');
+
+        progressContainer.style.display = 'none';
+        deviceInfoContainer.style.display = 'none';
+
+        transport = null;
+        updateUI();
+      }
+
+      // -----------------------------------------------------------------------
+      // Device info query
+      // -----------------------------------------------------------------------
+      async function queryDeviceInfo() {
+        deviceInfoContainer.style.display = 'block';
+        deviceInfoContent.innerHTML = '<em>Querying device…</em>';
+
+        const querySeq = { val: 1 };
+
+        function sendAndWait(req) {
+          return new Promise((resolve, reject) => {
+            transport.onFrame((frame) => resolve(frame));
+            transport.onError((err) => {
+              handleDisconnect(err);
+              reject(err);
+            });
+            transport.send(req).catch(reject);
+          });
+        }
+
+        const parts = [];
+
+        // 1. Slot Info
+        try {
+          const slotReq = buildImageSlotInfoRequest(querySeq.val++);
+          const slotFrame = await sendAndWait(slotReq);
+          const slHdr = decodeSmpHeader(slotFrame);
+          const rawSlotCbor = slotFrame.subarray(8);
+          log(
+            'data',
+            `Slot Info rsp: op=${slHdr.op} flags=${slHdr.flags} group=${slHdr.group} seq=${slHdr.seq} id=${slHdr.id} len=${slHdr.len}`
+          );
+          log('data', `Raw Slot Info CBOR`, hex(rawSlotCbor));
+          const slotInfo = parseImageSlotInfoResponse(slotFrame);
+          parts.push(
+            `<dt>Slot Info</dt><dd>` +
+              `<table style="font-size:0.82rem;border-collapse:collapse;width:100%">` +
+              slotInfo.images
+                .map(
+                  (img) =>
+                    `<tr><td style="padding:1px 8px 1px 0;color:#555">Image ${img.image}</td><td>${img.slots
+                      .map(
+                        (s) =>
+                          `Slot ${s.slot} — ${(s.size / 1024).toFixed(0)} kB`
+                      )
+                      .join(
+                        ', '
+                      )}${img.maxImageSize !== undefined ? ` (max ${(img.maxImageSize / 1024).toFixed(0)} kB)` : ''}</td></tr>`
+                )
+                .join('') +
+              `</table></dd>`
+          );
+          log('pass', `Slot Info: ${slotInfo.images.length} physical slot(s)`);
+        } catch (err) {
+          const isNoExec = err instanceof SmpError && err.rc === 8;
+          const msg = isNoExec
+            ? 'Slot Info command not supported by device'
+            : err.message;
+          parts.push(`<dt>Slot Info</dt><dd><em>${msg}</em></dd>`);
+          log('warn', `Slot Info ${msg}`);
+        }
+
+        // 2. Image State
+        let stateImages = [];
+        for (const tryImage of [undefined, 0]) {
+          try {
+            const stateReq = buildImageStateRequest(querySeq.val++, tryImage);
+            const stateFrame = await sendAndWait(stateReq);
+            const stHdr = decodeSmpHeader(stateFrame);
+            const rawStateCbor = stateFrame.subarray(8);
+            log(
+              'data',
+              `Image State rsp (image: ${tryImage ?? 'all'}): op=${stHdr.op} group=${stHdr.group} id=${stHdr.id} seq=${stHdr.seq}`
+            );
+            log('data', `Raw Image State CBOR`, hex(rawStateCbor));
+            const stateInfo = parseImageStateResponse(stateFrame);
+            stateImages = stateInfo.images;
+            if (stateImages.length > 0) break;
+          } catch (err) {
+            log(
+              'warn',
+              `Image State (image: ${tryImage ?? 'all'}) error: ${err.message}`
+            );
+          }
+        }
+        if (stateImages.length === 0) {
+          parts.push('<dt>Active image</dt><dd><em>none</em></dd>');
+          log('warn', 'Image State returned no images');
+        } else {
+          for (const img of stateImages) {
+            const flags = [
+              img.bootable && 'bootable',
+              img.pending && 'pending',
+              img.confirmed && 'confirmed',
+              img.active && 'active',
+              img.permanent && 'permanent',
+            ].filter(Boolean);
+            const hashStr = img.hash
+              ? img.hash.reduce(
+                  (s, b) => s + b.toString(16).padStart(2, '0'),
+                  ''
+                )
+              : '';
+            parts.push(
+              `<dt>Image #${img.image ?? 0} / Slot ${img.slot}</dt>` +
+                `<dd>` +
+                `<table style="font-size:0.82rem;border-collapse:collapse;width:100%">` +
+                `<tr><td style="padding:1px 8px 1px 0;color:#555">Version</td><td>${img.version ? `v${img.version}` : '<em>none</em>'}</td></tr>` +
+                (hashStr
+                  ? `<tr><td style="padding:1px 8px 1px 0;color:#555">SHA-256</td><td style="font-family:monospace;font-size:0.72rem;word-break:break-all">${hashStr}</td></tr>`
+                  : '') +
+                `<tr><td style="padding:1px 8px 1px 0;color:#555">Flags</td><td>${flags.length ? flags.join(', ') : '<em>none</em>'}</td></tr>` +
+                `</table>` +
+                `</dd>`
+            );
+          }
+          log('pass', `Image State: ${stateImages.length} image(s) found`);
+        }
+
+        deviceInfoContent.innerHTML = parts.join('');
+        log('pass', 'Device info query complete');
+      }
+
+      // -----------------------------------------------------------------------
+      // Connect
+      // -----------------------------------------------------------------------
+      async function doConnect() {
+        try {
+          setStatus('Requesting port…', 'pending');
+          log('info', 'Requesting serial port from user…');
+
+          transport = new SerialSmpTransport(
+            () => navigator.serial.requestPort(),
+            115200
+          );
+          await transport.connect();
+
+          log('pass', 'SerialSmpTransport connected and pipeline active');
+          isConnected = true;
+
+          updateUI();
+
+          // Register disconnect handler before querying device info
+          transport.onError((err) => {
+            handleDisconnect(err);
+          });
+
+          // Query device info after connection
+          await queryDeviceInfo();
+
+          // Guard: transport may have died during device info query
+          if (!isConnected) return;
+
+          setStatus(
+            'Connected — select a .bin file and start DFU',
+            'connected'
+          );
+        } catch (err) {
+          setStatus(`Connection failed: ${err.message}`, 'error');
+          log('fail', `Connect error: ${err.message}`);
+          transport = null;
+          isConnected = false;
+          deviceInfoContainer.style.display = 'none';
+          updateUI();
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // File selection
+      // -----------------------------------------------------------------------
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+          selectedImage = null;
+          imageInfoEl.innerHTML = '<em>No image loaded.</em>';
+          updateUI();
+          return;
+        }
+
+        try {
+          const buffer = await file.arrayBuffer();
+          // Validate and extract metadata before allowing DFU to start
+          const imgInfo = await parseImageInfo(buffer);
+          selectedImage = { name: file.name, buffer };
+          const size = (buffer.byteLength / 1024).toFixed(1);
+          const sha256Hex = [...imgInfo.sha256]
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+          imageInfoEl.innerHTML = `
+            <dt>File</dt><dd>${file.name}</dd>
+            <dt>Size</dt><dd>${size} kB (${buffer.byteLength} bytes)</dd>
+            <dt>Version</dt><dd>${imgInfo.version}</dd>
+            <dt>SHA-256</dt><dd style="font-family:monospace;word-break:break-all;font-size:0.72rem">${sha256Hex}</dd>
+          `;
+          log(
+            'pass',
+            `Loaded ${file.name} — version ${imgInfo.version} (${buffer.byteLength} bytes)`
+          );
+        } catch (err) {
+          log('fail', `Invalid .bin file: ${err.message}`);
+          selectedImage = null;
+          imageInfoEl.innerHTML =
+            '<em>Failed to parse image — is this a valid MCUboot .bin?</em>';
+        }
+
+        updateUI();
+      });
+
+      // -----------------------------------------------------------------------
+      // DFU run
+      // -----------------------------------------------------------------------
+      async function doDfu() {
+        if (!transport || !selectedImage) return;
+
+        isRunning = true;
+        updateUI();
+
+        setStatus('Starting DFU…', 'pending');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressLabel.textContent = 'Starting…';
+
+        const session = new DfuSession(transport);
+        session.onProgress = (p) => {
+          const pct = p.percentage !== undefined ? p.percentage : 0;
+          progressFill.style.width = `${pct}%`;
+          progressLabel.textContent =
+            p.phase === 'erasing'
+              ? 'Erasing…'
+              : p.phase === 'uploading'
+                ? `Uploading… ${pct}%`
+                : p.phase === 'testing'
+                  ? 'Testing…'
+                  : p.phase === 'done'
+                    ? 'Done!'
+                    : `Error: ${p.errorMessage || 'unknown'}`;
+          log(
+            'info',
+            `Progress: ${p.phase}${p.percentage !== undefined ? ` ${p.percentage}%` : ''}`
+          );
+        };
+
+        log(
+          'info',
+          `Starting DFU run with ${selectedImage.name} (${selectedImage.buffer.byteLength} bytes)`
+        );
+
+        try {
+          const t0 = performance.now();
+          await session.run(selectedImage.buffer);
+          const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+          log('pass', `DFU completed in ${elapsed}s`);
+          setStatus(`DFU completed in ${elapsed}s`, 'done');
+          progressFill.style.width = '100%';
+          progressFill.style.background = '#1565c0';
+          progressLabel.textContent = `Completed in ${elapsed}s`;
+        } catch (err) {
+          log('fail', `DFU failed: ${err.message}`);
+          setStatus(`DFU failed: ${err.message}`, 'error');
+          progressFill.style.background = '#c62828';
+          progressLabel.textContent = `Error: ${err.message}`;
+        } finally {
+          isRunning = false;
+          if (transport && !transport.connected && isConnected) {
+            // Transport died during the DFU run (DfuSession's onError handler
+            // rejected the pending promise but never called handleDisconnect).
+            // Clean up now so buttons reflect the actual disconnected state.
+            handleDisconnect(new Error('Device disconnected'));
+          } else {
+            // DfuSession.run() replaces onError; re-register the page-level
+            // handler so physical disconnects are caught while idle.
+            if (transport && isConnected) {
+              transport.onError((err) => {
+                handleDisconnect(err);
+              });
+            }
+            updateUI();
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Disconnect
+      // -----------------------------------------------------------------------
+      async function doDisconnect() {
+        if (!transport) return;
+
+        // Null out first so onError can't fire during cleanup
+        isConnected = false;
+        const t = transport;
+        transport = null;
+
+        setStatus('Disconnecting…', 'pending');
+        log('info', 'Disconnecting…');
+
+        try {
+          await t.disconnect();
+          log('pass', 'SerialSmpTransport disconnected cleanly');
+          setStatus('Disconnected', '');
+        } catch (err) {
+          log('warn', `Disconnect warning: ${err.message}`);
+          setStatus('Disconnected (with warnings)', '');
+        }
+
+        progressContainer.style.display = 'none';
+        deviceInfoContainer.style.display = 'none';
+        updateUI();
+      }
+
+      // -----------------------------------------------------------------------
+      // Wire up buttons
+      // -----------------------------------------------------------------------
+      connectBtn.addEventListener('click', doConnect);
+      dfuBtn.addEventListener('click', doDfu);
+      disconnectBtn.addEventListener('click', doDisconnect);
+
+      log(
+        'info',
+        'Page loaded. Connect, select a .bin file, then click "Start DFU".'
+      );
+    </script>
+  </body>
+</html>

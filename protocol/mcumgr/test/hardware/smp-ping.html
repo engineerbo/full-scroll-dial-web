@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SMP Ping – Hardware Test (Phases 1+2)</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f5f5f5;
+        color: #1a1a1a;
+        padding: 24px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 4px;
+      }
+      .subtitle {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 20px;
+      }
+      #controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      button {
+        padding: 8px 18px;
+        font-size: 0.9rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      button:not(:disabled):hover {
+        background: #eaeaea;
+      }
+      #connectBtn {
+        background: #0066cc;
+        color: #fff;
+        border-color: #0066cc;
+      }
+      #connectBtn:not(:disabled):hover {
+        background: #0055aa;
+      }
+      #pingBtn {
+        background: #2e7d32;
+        color: #fff;
+        border-color: #2e7d32;
+      }
+      #pingBtn:not(:disabled):hover {
+        background: #256a29;
+      }
+      #disconnectBtn {
+        background: #c62828;
+        color: #fff;
+        border-color: #c62828;
+      }
+      #disconnectBtn:not(:disabled):hover {
+        background: #b71c1c;
+      }
+      #status {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        background: #e0e0e0;
+      }
+      #status.connected {
+        background: #c8e6c9;
+      }
+      #status.error {
+        background: #ffcdd2;
+      }
+      #status.pending {
+        background: #fff9c4;
+      }
+      #log {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+      }
+      #log h2 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+      }
+      #logEntries {
+        font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+        font-size: 0.78rem;
+        line-height: 1.6;
+        max-height: 500px;
+        overflow-y: auto;
+      }
+      .entry {
+        padding: 2px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .entry .time {
+        color: #999;
+        margin-right: 8px;
+      }
+      .entry.pass {
+        color: #2e7d32;
+      }
+      .entry.fail {
+        color: #c62828;
+      }
+      .entry.info {
+        color: #1565c0;
+      }
+      .entry.data {
+        color: #555;
+      }
+      .entry.warn {
+        color: #e65100;
+      }
+      .hex-dump {
+        word-break: break-all;
+        background: #f8f8f8;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 2px;
+        font-size: 0.72rem;
+      }
+      #deviceInfo {
+        font-size: 0.8rem;
+        color: #555;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SMP Ping – Hardware Integration Test</h1>
+    <p class="subtitle">
+      Tests Phase&nbsp;1 (serial-codec) + Phase&nbsp;2 (SMP header) against a
+      real mcumgr device.
+    </p>
+
+    <div id="controls">
+      <button id="connectBtn">Connect</button>
+      <button id="pingBtn" disabled>Send Ping (Image State Read)</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div id="status">Disconnected</div>
+    <div id="deviceInfo"></div>
+
+    <div id="log">
+      <h2>Log</h2>
+      <div id="logEntries"></div>
+    </div>
+
+    <script type="module">
+      import {
+        crc16Kermit,
+        encodeLines,
+        createLineTransformer,
+        createDeframer,
+      } from '../../src/serial-codec.ts';
+      import {
+        encodeSmpHeader,
+        decodeSmpHeader,
+      } from '../../src/smp-header.ts';
+      import { Op, Group, ImgCmd } from '../../src/constants.ts';
+
+      // -----------------------------------------------------------------------
+      // DOM refs
+      // -----------------------------------------------------------------------
+      const connectBtn = document.getElementById('connectBtn');
+      const pingBtn = document.getElementById('pingBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      const statusEl = document.getElementById('status');
+      const deviceInfoEl = document.getElementById('deviceInfo');
+      const logEl = document.getElementById('logEntries');
+
+      // -----------------------------------------------------------------------
+      // State
+      // -----------------------------------------------------------------------
+      let port = null;
+      let writer = null;
+      let reader = null;
+      let isConnected = false;
+      let flushSent = false;
+      let seqNum = 0;
+      let pendingResolve = null;
+      let timeoutId = null;
+
+      // -----------------------------------------------------------------------
+      // Logging
+      // -----------------------------------------------------------------------
+      function log(type, msg, detail) {
+        const entry = document.createElement('div');
+        entry.className = `entry ${type}`;
+        const time = new Date().toLocaleTimeString();
+        entry.innerHTML = `<span class="time">[${time}]</span>${msg}`;
+        if (detail !== undefined) {
+          const hex = document.createElement('div');
+          hex.className = 'hex-dump';
+          hex.textContent = detail;
+          entry.appendChild(hex);
+        }
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = cls || '';
+      }
+
+      function updateUI() {
+        connectBtn.disabled = isConnected;
+        pingBtn.disabled = !isConnected;
+        disconnectBtn.disabled = !isConnected;
+      }
+
+      function hex(bytes) {
+        return Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(' ');
+      }
+
+      // -----------------------------------------------------------------------
+      // Connect
+      // -----------------------------------------------------------------------
+      async function doConnect() {
+        try {
+          setStatus('Requesting port…', 'pending');
+          log('info', 'Requesting serial port from user…');
+
+          port = await navigator.serial.requestPort();
+
+          setStatus('Opening port at 115200 baud…', 'pending');
+          log('info', `Opening port at 115200 baud…`);
+
+          await port.open({ baudRate: 115200 });
+
+          // Show device info if available
+          const info = port.getInfo();
+          if (info.usbVendorId || info.usbProductId) {
+            const vid = info.usbVendorId.toString(16).padStart(4, '0');
+            const pid = info.usbProductId.toString(16).padStart(4, '0');
+            deviceInfoEl.textContent = `USB device: VID=0x${vid}  PID=0x${pid}`;
+          } else {
+            deviceInfoEl.textContent = `USB device info not available`;
+          }
+
+          // Set up pipeline: port → LineTransformer → Deframer
+          const lineTransformer = createLineTransformer();
+          const deframer = createDeframer();
+
+          port.readable.pipeTo(lineTransformer.writable).catch(() => {});
+          lineTransformer.readable.pipeTo(deframer.writable).catch(() => {});
+
+          reader = deframer.readable.getReader();
+          writer = port.writable.getWriter();
+          isConnected = true;
+          flushSent = false;
+          seqNum = 0;
+
+          // Start read loop (runs until disconnect)
+          readLoop();
+
+          // Send initial \r\n flush
+          const flush = new Uint8Array([0x0d, 0x0a]);
+          await writer.write(flush);
+          flushSent = true;
+          log('info', `\`\\r\\n\` flush sent`);
+
+          setStatus(`Connected — ready to ping`, 'connected');
+          log('pass', 'Port opened and pipeline active');
+          updateUI();
+        } catch (err) {
+          setStatus(`Connection failed: ${err.message}`, 'error');
+          log('fail', `Connect error: ${err.message}`);
+          updateUI();
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Read loop
+      // -----------------------------------------------------------------------
+      async function readLoop() {
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            // value is a complete, CRC-verified SMP frame
+            if (pendingResolve) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+              const r = pendingResolve;
+              pendingResolve = null;
+              r(value);
+            }
+          }
+        } catch (err) {
+          // If still connected the reader exited due to a physical disconnect
+          if (isConnected) {
+            handleDisconnect(err.message || 'read error');
+          }
+        }
+      }
+
+      function handleDisconnect(reason) {
+        if (!isConnected) return;
+        isConnected = false;
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (pendingResolve) {
+          const r = pendingResolve;
+          pendingResolve = null;
+          r(null);
+        }
+
+        log('warn', `Device disconnected: ${reason}`);
+        setStatus('Device disconnected', 'error');
+        deviceInfoEl.textContent = '';
+
+        reader = null;
+        writer = null;
+        port = null;
+
+        updateUI();
+      }
+
+      // -----------------------------------------------------------------------
+      // Send Ping
+      // -----------------------------------------------------------------------
+      async function doPing() {
+        if (!isConnected || !writer) return;
+
+        pingBtn.disabled = true;
+        setStatus('Sending Image State read…', 'pending');
+
+        const seq = seqNum++;
+        const cborPayload = new Uint8Array([0xa0]); // empty CBOR map
+
+        // Build SMP header
+        const header = encodeSmpHeader({
+          op: Op.READ,
+          flags: 0,
+          len: cborPayload.length,
+          group: Group.IMAGE,
+          seq,
+          id: ImgCmd.STATE,
+        });
+
+        // Assemble full SMP frame
+        const frame = new Uint8Array(header.length + cborPayload.length);
+        frame.set(header, 0);
+        frame.set(cborPayload, header.length);
+
+        // Log request
+        log('data', `Request SMP frame (${frame.length} bytes):`, hex(frame));
+        log(
+          'data',
+          `Request header: op=${header[0]} flags=${header[1]} len=${(header[2] << 8) | header[3]} group=${(header[4] << 8) | header[5]} seq=${header[6]} id=${header[7]}`
+        );
+
+        // Encode to serial lines
+        const encoded = encodeLines(frame);
+        log(
+          'data',
+          `Encoded to ${encoded.length} bytes over serial:`,
+          hex(encoded)
+        );
+
+        // Write to port
+        try {
+          await writer.write(encoded);
+          log('info', `Written to port`);
+        } catch (err) {
+          setStatus(`Write error: ${err.message}`, 'error');
+          log('fail', `Write error: ${err.message}`);
+          pingBtn.disabled = false;
+          return;
+        }
+
+        // Wait for response with timeout
+        const response = await waitForFrame(3000);
+
+        if (response === null) {
+          if (!isConnected) return; // disconnect handler already reset UI
+          setStatus('Timeout — no response received', 'error');
+          log('fail', `Timeout after 3 seconds — no SMP response received`);
+          pingBtn.disabled = false;
+          return;
+        }
+
+        // Decode response header
+        if (response.length < 8) {
+          setStatus('Response too short', 'error');
+          log(
+            'fail',
+            `Response is only ${response.length} bytes — expected at least 8`
+          );
+          pingBtn.disabled = false;
+          return;
+        }
+
+        const respHdr = decodeSmpHeader(response);
+        const cborResp = response.subarray(8);
+
+        log(
+          'data',
+          `Response SMP frame (${response.length} bytes):`,
+          hex(response)
+        );
+        log(
+          'data',
+          `Response header: op=${respHdr.op} flags=${respHdr.flags} len=${respHdr.len} group=${respHdr.group} seq=${respHdr.seq} id=${respHdr.id}`
+        );
+        log(
+          'data',
+          `Response CBOR payload (${cborResp.length} bytes):`,
+          hex(cborResp)
+        );
+
+        // Assertions
+        let passed = 0;
+        let failed = 0;
+
+        if (respHdr.op === Op.READ_RSP) {
+          log('pass', `✓ response.op === READ_RSP (${Op.READ_RSP})`);
+          passed++;
+        } else {
+          log(
+            'fail',
+            `✗ response.op === ${respHdr.op}, expected ${Op.READ_RSP} (READ_RSP)`
+          );
+          failed++;
+        }
+
+        if (respHdr.group === Group.IMAGE) {
+          log('pass', `✓ response.group === IMAGE (${Group.IMAGE})`);
+          passed++;
+        } else {
+          log(
+            'fail',
+            `✗ response.group === ${respHdr.group}, expected ${Group.IMAGE} (IMAGE)`
+          );
+          failed++;
+        }
+
+        if (respHdr.id === ImgCmd.STATE) {
+          log('pass', `✓ response.id === STATE (${ImgCmd.STATE})`);
+          passed++;
+        } else {
+          log(
+            'fail',
+            `✗ response.id === ${respHdr.id}, expected ${ImgCmd.STATE} (STATE)`
+          );
+          failed++;
+        }
+
+        if (respHdr.seq === seq) {
+          log('pass', `✓ response.seq === ${seq} (matches request)`);
+          passed++;
+        } else {
+          log('fail', `✗ response.seq === ${respHdr.seq}, expected ${seq}`);
+          failed++;
+        }
+
+        if (respHdr.flags === 0) {
+          log('pass', `✓ response.flags === 0`);
+          passed++;
+        } else {
+          log('fail', `✗ response.flags === ${respHdr.flags}, expected 0`);
+          failed++;
+        }
+
+        const summary =
+          failed === 0
+            ? `All ${passed} assertions passed`
+            : `${passed} passed, ${failed} failed`;
+        setStatus(summary, failed === 0 ? 'connected' : 'error');
+        log(failed === 0 ? 'pass' : 'fail', summary);
+
+        pingBtn.disabled = false;
+      }
+
+      // -----------------------------------------------------------------------
+      // Wait for a frame with timeout
+      // -----------------------------------------------------------------------
+      function waitForFrame(ms) {
+        return new Promise((resolve) => {
+          pendingResolve = resolve;
+          timeoutId = setTimeout(() => {
+            pendingResolve = null;
+            resolve(null);
+          }, ms);
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // Disconnect
+      // -----------------------------------------------------------------------
+      async function doDisconnect() {
+        if (!isConnected) return;
+
+        // Set false FIRST so readLoop catch knows this is intentional
+        isConnected = false;
+
+        setStatus('Disconnecting…', 'pending');
+        log('info', 'Disconnecting…');
+
+        pingBtn.disabled = true;
+        disconnectBtn.disabled = true;
+
+        // Cancel any pending read
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        pendingResolve = null;
+
+        try {
+          if (reader) {
+            reader.cancel();
+            reader = null;
+          }
+        } catch (_) {}
+
+        try {
+          if (writer) {
+            await writer.close();
+            writer = null;
+          }
+        } catch (_) {}
+
+        try {
+          if (port) {
+            await port.close();
+            port = null;
+          }
+        } catch (_) {}
+
+        deviceInfoEl.textContent = '';
+
+        setStatus('Disconnected', '');
+        log('info', 'Port closed cleanly');
+
+        updateUI();
+      }
+
+      // -----------------------------------------------------------------------
+      // Wire up buttons
+      // -----------------------------------------------------------------------
+      connectBtn.addEventListener('click', doConnect);
+      pingBtn.addEventListener('click', doPing);
+      disconnectBtn.addEventListener('click', doDisconnect);
+
+      log('info', 'Page loaded. Click "Connect" to start.');
+    </script>
+  </body>
+</html>

@@ -1,0 +1,495 @@
+@import 'tailwindcss';
+
+/* DFU illustration layout constants — shared across 4 step panels */
+:root {
+  --dfu-device-rotation: -24deg;
+  --dfu-slide-top: 85.6%;
+  --dfu-button-left: 34.3%;
+  --dfu-button-top: 14.9%;
+  --dfu-led-left: 47.9%;
+  --dfu-led-top: 12.1%;
+}
+
+/* Status indicator dots — class names set programmatically by main.ts */
+.status-indicator {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9995px;
+  flex-shrink: 0;
+}
+
+.status-success {
+  background-color: #10b981;
+}
+
+.status-error {
+  background-color: #ef4444;
+}
+
+.status-idle {
+  background-color: transparent;
+}
+
+.status-loading {
+  background-color: #f59e0b;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes usb-plug {
+  0% {
+    transform: translateY(1.5rem);
+  }
+  25% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-usb-plug {
+  animation: usb-plug 2s ease-in-out infinite backwards;
+}
+
+/* USB cable for the DFU step 3 illustration — synced to the 12 s step cycle so the
+   drop-in animation starts when step 3 first becomes visible (46%).
+   The snap from translateY(0) back to translateY(1.5rem) at the cycle boundary is
+   hidden because steps 3–4 have opacity 0 from 0 – 42%. */
+@keyframes usb-plug-dfu {
+  0% {
+    transform: translateY(1.5rem);
+  }
+  46% {
+    transform: translateY(1.5rem);
+  }
+  58% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-usb-plug-dfu {
+  animation: usb-plug-dfu 12s ease-in-out infinite;
+}
+
+/* DFU bootloader entry guide — 4-step cycling animation (12 s total).
+   Steps 2–3 are ≈1.5 s; step 1 and step 4 are ≈3.0 s (more time to absorb each).
+   All cross-fades are 0.5 s (≈4%).
+
+   Timeline (12 s):
+     0 – 3.0 s    step 1 fully visible (ring 0 – 1.6 s; slide 1.6 – 2.0 s; red hold 2.0 – 3.0 s)
+     3.0 – 3.5 s  step 1 → step 2 cross-fade
+     3.5 – 5.0 s  step 2 fully visible
+     5.0 – 5.5 s  step 2 → step 3 cross-fade
+     5.5 – 7.0 s  step 3 fully visible (USB plugs in during 5.5 – 7.0 s)
+     7.0 – 7.5 s  step 3 → step 4 cross-fade
+     7.5 – 11.5 s step 4 fully visible (blue LED on)
+    11.5 – 12.0 s step 4 → step 1 cross-fade */
+
+@keyframes dfu-step-1 {
+  0% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 1;
+  }
+  29% {
+    opacity: 0;
+  }
+  96% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes dfu-step-2 {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0;
+  }
+  29% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dfu-step-3 {
+  0% {
+    opacity: 0;
+  }
+  42% {
+    opacity: 0;
+  }
+  46% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dfu-step-4 {
+  0% {
+    opacity: 0;
+  }
+  58% {
+    opacity: 0;
+  }
+  62% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-dfu-step-1 {
+  animation: dfu-step-1 12s ease-in-out infinite;
+}
+
+.animate-dfu-step-2 {
+  animation: dfu-step-2 12s ease-in-out infinite;
+}
+
+.animate-dfu-step-3 {
+  animation: dfu-step-3 12s ease-in-out infinite;
+}
+
+.animate-dfu-step-4 {
+  animation: dfu-step-4 12s ease-in-out infinite;
+}
+
+/* Step progress dots — one per step, each active while its step is visible */
+@keyframes dfu-dot-1 {
+  0% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 1;
+  }
+  29% {
+    opacity: 0.25;
+  }
+  96% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes dfu-dot-2 {
+  0% {
+    opacity: 0.25;
+  }
+  25% {
+    opacity: 0.25;
+  }
+  29% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 0.25;
+  }
+}
+@keyframes dfu-dot-3 {
+  0% {
+    opacity: 0.25;
+  }
+  42% {
+    opacity: 0.25;
+  }
+  46% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 0.25;
+  }
+}
+@keyframes dfu-dot-4 {
+  0% {
+    opacity: 0.25;
+  }
+  58% {
+    opacity: 0.25;
+  }
+  62% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.25;
+  }
+}
+
+.animate-dfu-dot-1 {
+  animation: dfu-dot-1 12s ease-in-out infinite;
+}
+.animate-dfu-dot-2 {
+  animation: dfu-dot-2 12s ease-in-out infinite;
+}
+.animate-dfu-dot-3 {
+  animation: dfu-dot-3 12s ease-in-out infinite;
+}
+.animate-dfu-dot-4 {
+  animation: dfu-dot-4 12s ease-in-out infinite;
+}
+
+/* Slide switch knob: green (on) → red (off), synced to the 12 s step cycle.
+
+   Timeline within 12 s:
+     0 – 13% (0 – 1.6 s)   hold green (blue ring pulses here)
+    13 – 17% (1.6 – 2.0 s)  slide green → red
+    17 – 90%                hold red (pause until step ends)
+    90 – 92%                reset to green while step 1 is invisible (opacity 0, 29–96%)
+    96 – 100%               step 1 fades in with knob already at green */
+@keyframes slide-power-off {
+  0% {
+    transform: translateX(5px);
+  }
+  13% {
+    transform: translateX(5px);
+  }
+  17% {
+    transform: translateX(-5px);
+  }
+  90% {
+    transform: translateX(-5px);
+  }
+  92% {
+    transform: translateX(5px);
+  }
+  100% {
+    transform: translateX(5px);
+  }
+}
+
+.animate-slide-knob {
+  animation: slide-power-off 12s ease-in-out infinite;
+}
+
+/* Highlight ring around the power switch.
+   Fades in 0–4%, holds 4–13% so the user clearly sees it before the knob moves,
+   then fades out as the knob slides (13–17%).
+   The wrapper opacity gates the child animate-ping so it is invisible outside step 1. */
+@keyframes slide-ring-show {
+  0% {
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  13% {
+    opacity: 1;
+  }
+  17% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-slide-ring-show {
+  animation: slide-ring-show 12s ease-in-out infinite;
+}
+
+/* Blue LED glow for DFU step 4 — sizes/colours extracted from inline styles */
+.led-halo {
+  width: 22px;
+  height: 10px;
+  left: -11px;
+  top: -5px;
+  background: radial-gradient(
+    ellipse at center,
+    #93c5fd 0%,
+    #3b82f6 70%,
+    transparent 100%
+  );
+  opacity: 0.55;
+}
+
+/* ── Dual-range slider ───────────────────────────────────────────────────────
+   Two range inputs stacked on top of each other; thumbs only are interactive. */
+
+.dual-range-container {
+  position: relative;
+  height: 1.25rem;
+}
+
+/* Grey base track */
+.dual-range-container::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  inset-inline: 0;
+  height: 0.25rem;
+  background: #e5e7eb;
+  border-radius: 9999px;
+}
+
+/* Blue fill between the two thumbs — positioned via --range-min-pct / --range-max-pct */
+.dual-range-fill {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: var(--range-min-pct, 0%);
+  right: calc(100% - var(--range-max-pct, 100%));
+  height: 0.25rem;
+  background: #3b82f6;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.dual-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  height: 100%;
+}
+
+.dual-range::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 0.25rem;
+}
+
+.dual-range::-webkit-slider-thumb {
+  pointer-events: all;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: #3b82f6;
+  cursor: pointer;
+  margin-top: -0.375rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s;
+}
+
+.dual-range::-webkit-slider-thumb:hover {
+  background: #2563eb;
+}
+
+.dual-range::-moz-range-track {
+  background: transparent;
+  height: 0.25rem;
+}
+
+.dual-range::-moz-range-thumb {
+  pointer-events: all;
+  border: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s;
+}
+
+.dual-range::-moz-range-thumb:hover {
+  background: #2563eb;
+}
+
+/* Floating value labels that sit above each thumb */
+.range-value-label {
+  position: absolute;
+  top: 0;
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: #6b7280;
+  transform: translateX(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dual-range-container::before {
+    background: #404040;
+  }
+  .dual-range-fill {
+    background: #60a5fa;
+  }
+  .dual-range::-webkit-slider-thumb {
+    background: #60a5fa;
+  }
+  .dual-range::-webkit-slider-thumb:hover {
+    background: #93c5fd;
+  }
+  .dual-range::-moz-range-thumb {
+    background: #60a5fa;
+  }
+  .dual-range::-moz-range-thumb:hover {
+    background: #93c5fd;
+  }
+  .range-value-label {
+    color: #9ca3af;
+  }
+}
+
+.led-core {
+  width: 12px;
+  height: 5px;
+  left: -6px;
+  top: -2.5px;
+  background: radial-gradient(
+    ellipse at center,
+    #ffffff 0%,
+    #bfdbfe 20%,
+    #2563eb 100%
+  );
+}

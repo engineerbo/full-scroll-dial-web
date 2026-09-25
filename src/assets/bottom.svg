@@ -1,0 +1,45 @@
+<svg width="530" height="530" version="1.1" viewBox="0 0 530 530" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <linearGradient id="linearGradient21">
+   <stop stop-color="#4d4d4d" offset="0"/>
+   <stop stop-color="#1f1f1f" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient19">
+   <stop stop-color="#fff" offset="0"/>
+   <stop stop-color="#4d4d4d" stop-opacity="0" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient10" x1="158" x2="206" y1="89" y2="68" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#262626" offset=".9"/>
+   <stop stop-color="#4d4d4d" offset="1"/>
+  </linearGradient>
+  <radialGradient id="radialGradient21" cx="282" cy="38" r="23" gradientTransform="matrix(.1 -.06 .1 .2 248 47)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient19"/>
+  <radialGradient id="radialGradient23" cx="290" cy="32" r="23" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient21"/>
+  <radialGradient id="radialGradient23-9" cx="290" cy="32" r="23" gradientTransform="translate(166 372)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient21"/>
+  <radialGradient id="radialGradient21-5" cx="282" cy="38" r="23" gradientTransform="matrix(.1 -.06 .1 .2 414 419)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient19"/>
+  <radialGradient id="radialGradient21-5-6" cx="282" cy="38" r="23" gradientTransform="matrix(.1 -.06 .1 .2 9 376)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient19"/>
+  <radialGradient id="radialGradient23-9-9" cx="290" cy="32" r="23" gradientTransform="translate(-239 329)" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient21"/>
+  <linearGradient id="linearGradient25" x1="228" x2="303" y1="501" y2="468" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#262626" offset=".9"/>
+   <stop stop-color="#4d4d4d" offset="1"/>
+  </linearGradient>
+ </defs>
+ <g stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width=".5">
+  <path d="m265 0.6a264 264 0 0 0-264 264 264 264 0 0 0 264 264 264 264 0 0 0 264-264 264 264 0 0 0-264-264zm-16 467h33c9 0 17 8 17 17s-8 17-17 17h-33c-9 0-17-8-17-17s8-17 17-17z" fill="#1f1f1f"/>
+  <path d="m248 461c-13 0-24 11-24 24s11 24 24 24h34c13 0 24-11 24-24s-11-24-24-24h-34zm0.4 7h33c9 0 17 8 17 17s-8 17-17 17h-33c-9 0-17-8-17-17s8-17 17-17z" fill="url(#linearGradient25)"/>
+  <rect x="232" y="468" width="66" height="34" rx="17" ry="17" fill="none"/>
+  <circle cx="182" cy="79" r="26" fill="url(#linearGradient10)"/>
+  <circle cx="182" cy="79" r="19" fill="#1a1a1a"/>
+ </g>
+ <g>
+  <g stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width=".5">
+   <circle cx="182" cy="79" r="14" fill="#404040"/>
+   <circle cx="290" cy="32" r="22" fill="url(#radialGradient23)"/>
+   <circle cx="290" cy="32" r="22" fill="url(#radialGradient21)"/>
+   <circle cx="455" cy="403" r="22" fill="url(#radialGradient23-9)"/>
+   <circle cx="455" cy="403" r="22" fill="url(#radialGradient21-5)"/>
+   <circle cx="51" cy="361" r="22" fill="url(#radialGradient23-9-9)"/>
+   <circle cx="51" cy="361" r="22" fill="url(#radialGradient21-5-6)"/>
+  </g>
+  <rect transform="rotate(-2)" x="230" y="65" width="43" height="16" rx="8" ry="8"/>
+ </g>
+</svg>

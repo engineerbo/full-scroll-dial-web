@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image State Test – Hardware Test (Phase 4)</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f5f5f5;
+        color: #1a1a1a;
+        padding: 24px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 4px;
+      }
+      .subtitle {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 20px;
+      }
+      #controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      button {
+        padding: 8px 18px;
+        font-size: 0.9rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      button:not(:disabled):hover {
+        background: #eaeaea;
+      }
+      #connectBtn {
+        background: #0066cc;
+        color: #fff;
+        border-color: #0066cc;
+      }
+      #connectBtn:not(:disabled):hover {
+        background: #0055aa;
+      }
+      #stateBtn {
+        background: #2e7d32;
+        color: #fff;
+        border-color: #2e7d32;
+      }
+      #stateBtn:not(:disabled):hover {
+        background: #256a29;
+      }
+      #disconnectBtn {
+        background: #c62828;
+        color: #fff;
+        border-color: #c62828;
+      }
+      #disconnectBtn:not(:disabled):hover {
+        background: #b71c1c;
+      }
+      #status {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        background: #e0e0e0;
+      }
+      #status.connected {
+        background: #c8e6c9;
+      }
+      #status.error {
+        background: #ffcdd2;
+      }
+      #status.pending {
+        background: #fff9c4;
+      }
+      #results {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+      #results h2 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+      }
+      #results table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+      #results th,
+      #results td {
+        padding: 6px 8px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+      #results th {
+        background: #fafafa;
+        font-weight: 600;
+      }
+      #results .hash {
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-size: 0.72rem;
+        word-break: break-all;
+        max-width: 180px;
+      }
+      #log {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+      }
+      #log h2 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+      }
+      #logEntries {
+        font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+        font-size: 0.78rem;
+        line-height: 1.6;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .entry {
+        padding: 2px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .entry .time {
+        color: #999;
+        margin-right: 8px;
+      }
+      .entry.pass {
+        color: #2e7d32;
+      }
+      .entry.fail {
+        color: #c62828;
+      }
+      .entry.info {
+        color: #1565c0;
+      }
+      .entry.data {
+        color: #555;
+      }
+      .entry.warn {
+        color: #e65100;
+      }
+      .hex-dump {
+        word-break: break-all;
+        background: #f8f8f8;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 2px;
+        font-size: 0.72rem;
+      }
+      #deviceInfo {
+        font-size: 0.8rem;
+        color: #555;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Image State Test – Hardware Integration Test</h1>
+    <p class="subtitle">
+      Tests Phase&nbsp;4 (<code>buildImageStateRequest</code> +
+      <code>parseImageStateResponse</code>) against a real mcumgr device via
+      <code>SerialSmpTransport</code>.
+    </p>
+
+    <div id="controls">
+      <button id="connectBtn">Connect</button>
+      <button id="stateBtn" disabled>Get Image State</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div id="status">Disconnected</div>
+    <div id="deviceInfo"></div>
+
+    <div id="results">
+      <h2>Image State Results</h2>
+      <div id="resultsBody">
+        <em>No data yet. Connect and click "Get Image State".</em>
+      </div>
+    </div>
+
+    <div id="log">
+      <h2>Log</h2>
+      <div id="logEntries"></div>
+    </div>
+
+    <script type="module">
+      import { SerialSmpTransport } from '../../src/transport.ts';
+      import {
+        buildImageStateRequest,
+        parseImageStateResponse,
+      } from '../../src/image-commands.ts';
+      import { decodeSmpHeader } from '../../src/smp-header.ts';
+      import { Op, Group, ImgCmd } from '../../src/constants.ts';
+
+      // -----------------------------------------------------------------------
+      // DOM refs
+      // -----------------------------------------------------------------------
+      const connectBtn = document.getElementById('connectBtn');
+      const stateBtn = document.getElementById('stateBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      const statusEl = document.getElementById('status');
+      const deviceInfoEl = document.getElementById('deviceInfo');
+      const resultsBody = document.getElementById('resultsBody');
+      const logEl = document.getElementById('logEntries');
+
+      // -----------------------------------------------------------------------
+      // State
+      // -----------------------------------------------------------------------
+      let transport = null;
+      let isConnected = false;
+      let seqNum = 0;
+      let pendingResolve = null;
+      let timeoutId = null;
+
+      // -----------------------------------------------------------------------
+      // Logging
+      // -----------------------------------------------------------------------
+      function log(type, msg, detail) {
+        const entry = document.createElement('div');
+        entry.className = `entry ${type}`;
+        const time = new Date().toLocaleTimeString();
+        entry.innerHTML = `<span class="time">[${time}]</span>${msg}`;
+        if (detail !== undefined) {
+          const hex = document.createElement('div');
+          hex.className = 'hex-dump';
+          hex.textContent = detail;
+          entry.appendChild(hex);
+        }
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = cls || '';
+      }
+
+      function updateUI() {
+        connectBtn.disabled = isConnected;
+        stateBtn.disabled = !isConnected;
+        disconnectBtn.disabled = !isConnected;
+      }
+
+      function hex(bytes) {
+        return Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(' ');
+      }
+
+      // -----------------------------------------------------------------------
+      // Connect
+      // -----------------------------------------------------------------------
+      async function doConnect() {
+        try {
+          setStatus('Requesting port…', 'pending');
+          log('info', 'Requesting serial port from user…');
+
+          transport = new SerialSmpTransport(
+            () => navigator.serial.requestPort(),
+            115200
+          );
+
+          transport.onFrame((frame) => {
+            log('data', `Frame received (${frame.length} bytes):`, hex(frame));
+            if (pendingResolve) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+              const r = pendingResolve;
+              pendingResolve = null;
+              r(frame);
+            }
+          });
+
+          transport.onError((err) => {
+            handleDisconnect(err);
+          });
+
+          await transport.connect();
+
+          log('pass', 'SerialSmpTransport connected and pipeline active');
+          setStatus('Connected — ready to query image state', 'connected');
+          isConnected = true;
+
+          deviceInfoEl.textContent = 'SerialSmpTransport active';
+          updateUI();
+        } catch (err) {
+          setStatus(`Connection failed: ${err.message}`, 'error');
+          log('fail', `Connect error: ${err.message}`);
+          transport = null;
+          updateUI();
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Display image results
+      // -----------------------------------------------------------------------
+      function displayImageState(response) {
+        if (!response.images || response.images.length === 0) {
+          resultsBody.innerHTML = '<em>No images reported by device.</em>';
+          return;
+        }
+
+        let html = `<table>
+        <thead><tr>
+          <th>#</th>
+          <th>Slot</th>
+          <th>Version</th>
+          <th>Hash</th>
+          <th>Flags</th>
+        </tr></thead><tbody>`;
+
+        for (let i = 0; i < response.images.length; i++) {
+          const img = response.images[i];
+          const flags = [];
+          if (img.bootable) flags.push('bootable');
+          if (img.pending) flags.push('pending');
+          if (img.confirmed) flags.push('confirmed');
+          if (img.active) flags.push('active');
+          if (img.permanent) flags.push('permanent');
+
+          const hashStr = img.hash ? hex(img.hash) : '-';
+          const imgNum = img.image !== undefined ? img.image : '-';
+
+          html += `<tr>
+          <td>${imgNum}</td>
+          <td>${img.slot}</td>
+          <td>${img.version || '-'}</td>
+          <td class="hash">${hashStr}</td>
+          <td>${flags.join(', ') || '-'}</td>
+        </tr>`;
+        }
+
+        html += '</tbody></table>';
+        resultsBody.innerHTML = html;
+      }
+
+      // -----------------------------------------------------------------------
+      // Get Image State
+      // -----------------------------------------------------------------------
+      async function doGetState() {
+        if (!transport || !isConnected) return;
+
+        stateBtn.disabled = true;
+        setStatus('Requesting image state…', 'pending');
+
+        const seq = seqNum++;
+        log('info', `Sending Image State read (seq=${seq})…`);
+
+        const frame = buildImageStateRequest(seq);
+        log('data', `Request SMP frame (${frame.length} bytes):`, hex(frame));
+
+        try {
+          await transport.send(frame);
+          log('info', 'Request sent, waiting for response…');
+        } catch (err) {
+          setStatus(`Send error: ${err.message}`, 'error');
+          log('fail', `Send error: ${err.message}`);
+          stateBtn.disabled = false;
+          return;
+        }
+
+        const response = await waitForFrame(5000);
+
+        if (response === null) {
+          if (!isConnected) return; // disconnect handler already reset UI
+          setStatus('Timeout — no response received', 'error');
+          log('fail', 'Timeout after 5 seconds — no SMP response received');
+          stateBtn.disabled = false;
+          return;
+        }
+
+        // Decode and display
+        try {
+          const respHdr = decodeSmpHeader(response);
+          log(
+            'data',
+            `Response header: op=${respHdr.op} flags=${respHdr.flags} len=${respHdr.len} group=${respHdr.group} seq=${respHdr.seq} id=${respHdr.id}`
+          );
+
+          if (
+            respHdr.op === Op.READ_RSP &&
+            respHdr.group === Group.IMAGE &&
+            respHdr.id === ImgCmd.STATE
+          ) {
+            log('pass', 'Valid Image State response header');
+          } else {
+            log(
+              'warn',
+              `Unexpected header — op=${respHdr.op} group=${respHdr.group} id=${respHdr.id}`
+            );
+          }
+
+          if (respHdr.seq !== seq) {
+            log(
+              'warn',
+              `Seq mismatch: request=${seq}, response=${respHdr.seq}`
+            );
+          }
+
+          const parsed = parseImageStateResponse(response);
+          displayImageState(parsed);
+
+          const count = parsed.images.length;
+          log(
+            'pass',
+            `Parsed ${count} image slot${count !== 1 ? 's' : ''} from response`
+          );
+          setStatus(
+            `Got ${count} image slot${count !== 1 ? 's' : ''}`,
+            'connected'
+          );
+        } catch (err) {
+          setStatus(`Parse error: ${err.message}`, 'error');
+          log('fail', `Parse error: ${err.message}`);
+          // Show raw CBOR hex
+          const raw = response.subarray(8);
+          log('data', `Raw CBOR payload (${raw.length} bytes):`, hex(raw));
+        }
+
+        stateBtn.disabled = false;
+      }
+
+      // -----------------------------------------------------------------------
+      // Physical disconnect handler
+      // -----------------------------------------------------------------------
+      function handleDisconnect(err) {
+        if (!isConnected) return;
+        isConnected = false;
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (pendingResolve) {
+          const r = pendingResolve;
+          pendingResolve = null;
+          r(null);
+        }
+
+        log('warn', `Device disconnected: ${err.message}`);
+        setStatus('Device disconnected', 'error');
+        deviceInfoEl.textContent = '';
+
+        transport = null;
+        updateUI();
+      }
+
+      // -----------------------------------------------------------------------
+      // Wait for a frame with timeout
+      // -----------------------------------------------------------------------
+      function waitForFrame(ms) {
+        return new Promise((resolve) => {
+          pendingResolve = resolve;
+          timeoutId = setTimeout(() => {
+            pendingResolve = null;
+            resolve(null);
+          }, ms);
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // Disconnect
+      // -----------------------------------------------------------------------
+      async function doDisconnect() {
+        if (!transport) return;
+
+        // Null out first so onError can't fire during cleanup
+        isConnected = false;
+        const t = transport;
+        transport = null;
+
+        setStatus('Disconnecting…', 'pending');
+        log('info', 'Disconnecting…');
+
+        stateBtn.disabled = true;
+        disconnectBtn.disabled = true;
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        pendingResolve = null;
+
+        try {
+          await t.disconnect();
+          log('pass', 'SerialSmpTransport disconnected cleanly');
+          setStatus('Disconnected', '');
+        } catch (err) {
+          log('warn', `Disconnect warning: ${err.message}`);
+          setStatus('Disconnected (with warnings)', '');
+        }
+
+        deviceInfoEl.textContent = '';
+        updateUI();
+      }
+
+      // -----------------------------------------------------------------------
+      // Wire up buttons
+      // -----------------------------------------------------------------------
+      connectBtn.addEventListener('click', doConnect);
+      stateBtn.addEventListener('click', doGetState);
+      disconnectBtn.addEventListener('click', doDisconnect);
+
+      log('info', 'Page loaded. Click "Connect" to start.');
+    </script>
+  </body>
+</html>
