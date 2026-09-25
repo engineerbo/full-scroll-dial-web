@@ -177,7 +177,16 @@ export class ConnectionManager {
     const reader = openPort.readable.getReader();
     let detected = false;
 
-    const cancelTimer = setTimeout(() => reader.cancel().catch(() => {}), 1500);
+    // Chrome only lets go of port.readable once the cancel it started has finished
+    // flushing, and a later cancel() on the closed stream resolves before that. So
+    // keep the timer's cancel promise and await that one during cleanup, otherwise
+    // the caller's port.readable may still be this closed stream.
+    let cancelled: Promise<void> | null = null;
+    const cancelReader = () => (cancelled ??= reader.cancel());
+    const cancelTimer = setTimeout(
+      () => void cancelReader().catch(() => {}),
+      1500
+    );
 
     try {
       await writer.write(new Uint8Array([0x0d, 0x0a]));
@@ -196,7 +205,7 @@ export class ConnectionManager {
     } finally {
       clearTimeout(cancelTimer);
       try {
-        await reader.cancel();
+        await cancelReader();
       } catch {
         // ignore cancel error during cleanup
       }

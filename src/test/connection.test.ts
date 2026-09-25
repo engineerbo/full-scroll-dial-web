@@ -302,6 +302,50 @@ describe('ConnectionManager', () => {
     });
   });
 
+  // ── 2b. Probe timeout (Chrome port.readable semantics) ───────────────────
+
+  describe('SMP probe timeout', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('main reader gets a fresh stream once the timed-out probe cancel has finished', async () => {
+      // Chrome keeps returning the same port.readable until the underlying cancel
+      // (a receive-buffer flush) completes, and only then hands out a new stream
+      vi.useFakeTimers();
+      let finishFlush!: () => void;
+      let current: ReadableStream<Uint8Array> | null = null;
+      const streams: ReadableStream<Uint8Array>[] = [];
+      const makeStream = () =>
+        new ReadableStream<Uint8Array>({
+          cancel: () =>
+            new Promise<void>((resolve) => {
+              finishFlush = () => {
+                current = null;
+                resolve();
+              };
+            }),
+        });
+      Object.defineProperty(mockPort.port, 'readable', {
+        get: () => {
+          if (!current) {
+            current = makeStream();
+            streams.push(current);
+          }
+          return current;
+        },
+      });
+
+      const connecting = conn.connect();
+      await vi.advanceTimersByTimeAsync(1500);
+      finishFlush();
+      await connecting;
+
+      expect(streams).toHaveLength(2);
+      expect(conn.connected).toBe(true);
+    });
+  });
+
   // ── 3. Disconnect ─────────────────────────────────────────────────────────
 
   describe('disconnect', () => {
