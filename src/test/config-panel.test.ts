@@ -102,12 +102,17 @@ describe('info tips', () => {
     document.body.innerHTML = '';
   });
 
-  it('gives every card except the loading card exactly one info tip', () => {
+  it('gives every setting card exactly one info tip', () => {
     const { container } = makeSetup();
+    // Restore defaults is self-explanatory, so it has no tip
+    const untipped = new Set(['configLoadingSection', 'resetDefaultsSection']);
     const cards = Array.from(container.children).filter(
-      (el) => el.id !== 'configLoadingSection'
+      (el) => !untipped.has(el.id)
     );
     expect(cards.length).toBe(9);
+    expect(
+      container.querySelector('#resetDefaultsSection .info-tip')
+    ).toBeNull();
     for (const card of cards) {
       expect(card.querySelectorAll('.info-tip').length, card.id).toBe(1);
     }

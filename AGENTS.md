@@ -59,6 +59,7 @@ src/                     ← UI layer (vanilla TypeScript, no framework)
       button-actions.ts    Button press + long-press select fields
       backlash.ts          Scroll backlash (lost motion on reversal) slider
       self-test.ts         Run-self-test action card (not poll-driven, see below)
+      reset-defaults.ts    Restore-defaults action card with two-click confirm (not poll-driven)
   dfu.ts                   DFU UI: device info, file upload, progress, session control
   constants.ts             Shared timing/layout constants
   poller.ts                Periodic GET_ALL_STATES loop; gates on in-flight commands

@@ -20,6 +20,10 @@ import { directionHtml, bindDirectionField } from './fields/direction';
 import { sensitivityHtml, bindSensitivityFields } from './fields/sensitivity';
 import { backlashHtml, bindBacklashField } from './fields/backlash';
 import { selfTestHtml, bindSelfTestField } from './fields/self-test';
+import {
+  resetDefaultsHtml,
+  bindResetDefaultsField,
+} from './fields/reset-defaults';
 
 const LOADING_HTML = `
 <div id="configLoadingSection" class="hidden rounded-xl border border-neutral-200 bg-white p-4 flex items-center gap-2 dark:border-neutral-800 dark:bg-neutral-900">
@@ -35,7 +39,8 @@ const CARDS_HTML =
   directionHtml +
   sensitivityHtml +
   backlashHtml +
-  selfTestHtml;
+  selfTestHtml +
+  resetDefaultsHtml;
 
 export interface ConfigPanel {
   prepare(): void;
@@ -75,6 +80,7 @@ export function bindConfigPanel(
   const sensitivityBinding = bindSensitivityFields(ctx);
   const backlashBinding = bindBacklashField(ctx);
   const selfTestBinding = bindSelfTestField(ctx);
+  const resetDefaultsBinding = bindResetDefaultsField(ctx);
 
   function syncAndBind(): void {
     const protocol = conn.protocol;
@@ -97,6 +103,7 @@ export function bindConfigPanel(
       sensitivityBinding.activate(),
       backlashBinding.activate(),
       selfTestBinding.activate(),
+      resetDefaultsBinding.activate(),
     ];
 
     const versionPayload = new Uint8Array([
@@ -165,6 +172,7 @@ export function bindConfigPanel(
       sensitivityBinding.cleanup();
       backlashBinding.cleanup();
       selfTestBinding.cleanup();
+      resetDefaultsBinding.cleanup();
       configLoadingSection.classList.add('hidden');
     },
   };
