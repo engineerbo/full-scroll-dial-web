@@ -11,11 +11,18 @@ import { makeSaver } from '../../save-command';
 import { SENSITIVITY_DEBOUNCE_MS, THUMB_RADIUS_PX } from '../../constants';
 import { checkPoll, CARD } from '../field-utils';
 import type { FieldBinding, FieldContext } from '../field-utils';
+import { infoTip } from '../../info-tip';
 
 export const sensitivityHtml = `
 <div id="sensitivitySection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Sensitivity</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Sensitivity</span>
+      ${infoTip(
+        'sensitivityInfo',
+        'How far the page scrolls per turn of the dial. Higher values scroll faster.'
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="sensitivityStatus" class="status-indicator status-idle" aria-label="Sensitivity status"></span>
       <span id="sensitivityStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>
@@ -29,7 +36,13 @@ export const sensitivityHtml = `
 </div>
 <div id="sensitivityRangeSection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Sensitivity range</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Sensitivity range</span>
+      ${infoTip(
+        'sensitivityRangeInfo',
+        'The lowest and highest sensitivity that the Cycle Sensitivity button action steps between. Each press doubles the sensitivity until it reaches the maximum, then the next press returns to the minimum.'
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="sensitivityRangeStatus" class="status-indicator status-idle" aria-label="Sensitivity range status"></span>
       <span id="sensitivityRangeStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>

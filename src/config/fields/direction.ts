@@ -6,11 +6,18 @@ import {
 } from '../../../protocol/command';
 import { makeEnumSelectField, CARD, SELECT } from '../field-utils';
 import type { FieldBinding, FieldContext } from '../field-utils';
+import { infoTip } from '../../info-tip';
 
 export const directionHtml = `
 <div id="directionSection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Direction</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Direction</span>
+      ${infoTip(
+        'directionInfo',
+        'Which way the page scrolls when you turn the dial. Inverted swaps clockwise and counter-clockwise.'
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="directionStatus" class="status-indicator status-idle" aria-label="Direction status"></span>
       <span id="directionStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>

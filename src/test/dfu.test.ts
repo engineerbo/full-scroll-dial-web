@@ -194,6 +194,24 @@ afterEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+describe('info tips', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('adds an info tip to the device, firmware file and progress cards', () => {
+    const { q } = makePanel();
+    for (const sel of [
+      '#dfuDeviceSuccess',
+      '#dfuFileInput',
+      '#dfuProgressContainer',
+    ]) {
+      const card = sel === '#dfuFileInput' ? q(sel).parentElement! : q(sel);
+      expect(card.querySelectorAll('.info-tip').length, sel).toBe(1);
+    }
+  });
+});
+
 describe('connect → device info', () => {
   it('shows dfuDeviceSuccess and populates version when device responds', async () => {
     const { panel, q } = makePanel();

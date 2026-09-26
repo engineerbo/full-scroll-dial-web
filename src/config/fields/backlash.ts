@@ -11,6 +11,7 @@ import { setFieldStatus } from '../../field-status';
 import { makeSaver } from '../../save-command';
 import { SENSITIVITY_DEBOUNCE_MS } from '../../constants';
 import type { BoundSlider } from '../../debounced-slider';
+import { infoTip } from '../../info-tip';
 
 /** Firmware stores the backlash in tenths of a degree. */
 const TENTHS_PER_DEGREE = 10;
@@ -22,7 +23,13 @@ function formatBacklash(tenths: number): string {
 export const backlashHtml = `
 <div id="backlashSection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Backlash</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Backlash</span>
+      ${infoTip(
+        'backlashInfo',
+        'Stops small unintended movements from scrolling the page back and forth. Increase the value if the page moves when you let go of the dial.'
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="backlashStatus" class="status-indicator status-idle" aria-label="Backlash status"></span>
       <span id="backlashStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>

@@ -8,6 +8,7 @@ import {
 import { makeSaver } from '../../save-command';
 import { checkPoll, makeFieldCallback, CARD, SELECT } from '../field-utils';
 import type { FieldBinding, FieldContext } from '../field-utils';
+import { infoTip } from '../../info-tip';
 
 const BUTTON_OPTIONS = `
     <option value="0">Cycle Sensitivity</option>
@@ -18,7 +19,13 @@ const BUTTON_OPTIONS = `
 export const buttonActionsHtml = `
 <div id="buttonPressSection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Button press</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Button press</span>
+      ${infoTip(
+        'buttonPressInfo',
+        "What happens when you press the dial's button."
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="buttonPressStatus" class="status-indicator status-idle" aria-label="Button press status"></span>
       <span id="buttonPressStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>
@@ -30,7 +37,13 @@ export const buttonActionsHtml = `
 </div>
 <div id="buttonLongpressSection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Button long-press</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Button long-press</span>
+      ${infoTip(
+        'buttonLongpressInfo',
+        "What happens when you press and hold the dial's button (for three seconds)."
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="buttonLongpressStatus" class="status-indicator status-idle" aria-label="Button long-press status"></span>
       <span id="buttonLongpressStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>

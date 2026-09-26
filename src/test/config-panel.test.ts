@@ -97,6 +97,31 @@ describe('prepare()', () => {
   });
 });
 
+describe('info tips', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('gives every card except the loading card exactly one info tip', () => {
+    const { container } = makeSetup();
+    const cards = Array.from(container.children).filter(
+      (el) => el.id !== 'configLoadingSection'
+    );
+    expect(cards.length).toBe(9);
+    for (const card of cards) {
+      expect(card.querySelectorAll('.info-tip').length, card.id).toBe(1);
+    }
+  });
+
+  it('uses unique tooltip ids', () => {
+    const { container } = makeSetup();
+    const ids = Array.from(container.querySelectorAll('[role="tooltip"]')).map(
+      (el) => el.id
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
 describe('onSynced() — null protocol', () => {
   afterEach(() => {
     document.body.innerHTML = '';

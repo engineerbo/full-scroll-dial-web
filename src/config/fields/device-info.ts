@@ -1,6 +1,7 @@
 import { GROUP, CORE_CMD } from '../../../protocol/command';
 import { CARD } from '../field-utils';
 import type { FieldBinding, FieldContext } from '../field-utils';
+import { infoTip } from '../../info-tip';
 
 const FW_KEY = `${GROUP.CORE}-${CORE_CMD.GET_FW_VERSION}`;
 const HW_KEY = `${GROUP.CORE}-${CORE_CMD.GET_HW_VERSION}`;
@@ -8,7 +9,13 @@ const SERIAL_KEY = `${GROUP.CORE}-${CORE_CMD.GET_SERIAL}`;
 
 export const deviceInfoHtml = `
 <div id="deviceInfoSection" class="${CARD}">
-  <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Device</span>
+  <div class="flex items-center gap-1.5">
+    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Device</span>
+    ${infoTip(
+      'deviceInfoInfo',
+      'Identifying details read from the connected dial. Include these when reporting an issue.'
+    )}
+  </div>
   <dl class="space-y-1.5">
     <div id="fwVersionRow" class="hidden flex items-center justify-between">
       <dt class="text-xs text-neutral-500 dark:text-neutral-400">Firmware Version</dt>

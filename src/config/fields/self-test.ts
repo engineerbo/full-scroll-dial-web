@@ -14,6 +14,7 @@ import { BTN_CONNECT } from '../../button-classes';
 import { setFieldStatus } from '../../field-status';
 import { makeRunner } from '../../run-command';
 import type { FieldBinding, FieldContext } from '../field-utils';
+import { infoTip } from '../../info-tip';
 
 const IDLE_MESSAGE =
   'Checks the rotation sensor and the magnet inside the dial.';
@@ -21,7 +22,13 @@ const IDLE_MESSAGE =
 export const selfTestHtml = `
 <div id="selfTestSection" class="${CARD}">
   <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Self-test</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Self-test</span>
+      ${infoTip(
+        'selfTestInfo',
+        'Run this if you have scrolling issues. Include the result and readings when reporting an issue.'
+      )}
+    </div>
     <div class="flex items-center gap-1.5">
       <span id="selfTestStatus" class="status-indicator status-idle" aria-label="Self-test status"></span>
       <span id="selfTestStatusText" class="text-xs text-neutral-400 dark:text-neutral-500"></span>

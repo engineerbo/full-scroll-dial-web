@@ -9,6 +9,7 @@ import {
 import { getRequiredElement } from './dom';
 import { renderDfuSteps } from './dfu-steps';
 import { BTN_CONNECT, BTN_DISCONNECT } from './button-classes';
+import { infoTip } from './info-tip';
 
 const PROGRESS_INDETERMINATE =
   'h-full rounded-full bg-blue-400 animate-pulse transition-all duration-300';
@@ -29,6 +30,10 @@ const DFU_SECTION_HTML = `
     <div class="flex items-center gap-1.5 mb-2">
       <span class="status-indicator status-success" aria-hidden="true"></span>
       <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Device ready</span>
+      ${infoTip(
+        'dfuDeviceInfo',
+        'The firmware image currently installed on the device, as reported by the bootloader.'
+      )}
     </div>
     <dl class="text-xs space-y-0.5 text-neutral-500 dark:text-neutral-400">
       <div class="flex justify-between gap-2">
@@ -52,7 +57,13 @@ const DFU_SECTION_HTML = `
   </div>
 </div>
 <div class="rounded-xl border border-neutral-200 bg-white p-4 space-y-3 dark:border-neutral-800 dark:bg-neutral-900">
-  <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Firmware file</span>
+  <div class="flex items-center gap-1.5">
+    <span class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Firmware file</span>
+    ${infoTip(
+      'dfuFileInfo',
+      'Choose a .bin firmware image. Its version is read from the image header before you upload it.'
+    )}
+  </div>
   <input type="file" id="dfuFileInput" accept=".bin" class="block w-full text-sm text-neutral-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-neutral-400 dark:file:bg-neutral-800 dark:file:text-neutral-300 disabled:opacity-40" />
   <p id="dfuFileError" class="hidden text-xs text-red-500 dark:text-red-400"></p>
   <dl id="dfuImageInfo" class="hidden text-xs space-y-0.5 text-neutral-500 dark:text-neutral-400">
@@ -79,7 +90,13 @@ const DFU_SECTION_HTML = `
   <div class="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
     <div id="dfuProgressFill" class="h-full rounded-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
   </div>
-  <p id="dfuProgressLabel" class="text-xs text-neutral-500 dark:text-neutral-400"></p>
+  <div class="flex items-center gap-1.5">
+    <p id="dfuProgressLabel" class="text-xs text-neutral-500 dark:text-neutral-400"></p>
+    ${infoTip(
+      'dfuProgressInfo',
+      'Upload progress. Keep the device plugged in and this tab open until the update finishes.'
+    )}
+  </div>
 </div>`;
 
 type StatusState = 'disconnected' | 'connected' | 'error';
